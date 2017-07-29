@@ -10,7 +10,7 @@
  
  */
 
-void init_uart(void) {
+void init_UART2(void) {
     
    unsigned int UMODEvalue, U2STAvalue;  //auxiliary UART config variables (parâmetros de configuração da porta série)
    
@@ -26,6 +26,37 @@ void init_uart(void) {
  
     return;
  }
+
+
+void init_UART1(void){
+
+    /* configures LED to denote USD/UART activity*/
+    int BRGVAL = (FCY/(16*115200))-1;
+    
+    
+     TRISFbits.TRISF2 = 1;
+     TRISFbits.TRISF3 = 0;
+    LATFbits.LATF2 = 0;
+
+    U1BRG = BRGVAL;
+    U1MODEbits.PDSEL = 0;        /* 8-bit data, no parity */
+    U1MODEbits.STSEL = 0;        /* 1 Stop-bit */
+    U1MODEbits.USIDL = 0;        /* Continue operation in idle mode */
+    U1MODEbits.ALTIO = 0;        /* Use U1TX and U1RX only*/
+    IEC0bits.U1TXIE = 0;        /* No interrupt when transmitting */
+    U1STAbits.UTXISEL = 0;        /* Interrupt when a character is transferred to the Transmit Shift register */
+    IEC0bits.U1RXIE = 1;        /* Enable UART Receive interrupt */
+    IPC2bits.U1RXIP = 5;        /* UART1 Receiver Interrupt Priority is 5 */
+    U1STAbits.URXISEL = 0;        /* Interrupt flag bit is set when a character is received */
+    IFS0bits.U1RXIF = 0;        /* clear the Rx Interrupt Flag */
+    U1MODEbits.UARTEN = 1;        /* Enanble UART */
+    U1STAbits.UTXEN = 1;        /* UART transmitter enabled, UxTX pin controlled by UART (if UARTEN = 1) */
+
+
+    return;
+}
+
+
 
 
 /*
@@ -118,24 +149,4 @@ void init_Timer3(int pre_scale, int count)
     
     T3CONbits.TON = 1;    // Turn on Timer 3        
     return;
-}
-
-/*
- 
- 
- ***** PWM CONFIGURATION ***** 
- 
- */
-
-
-void PWM_Config(int duty_cycle)
-
-{  
-    
-    OC2RS = duty_cycle;           //sets the initial duty_cycle;
-    OC2CONbits.OCM =6;      //set OC2 mode to PWM
-    OC2R = 0;               //Initial Delay (only for the first cycle)
-    OC2CONbits.OCTSEL = 0;  //selects Timer_2 as the OC2 clock source
-    T2CONbits.TON = 1;      //turns Timer_2 ON (starts PWM generation at OC2) 
-    
 }

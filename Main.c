@@ -6,7 +6,13 @@
  */
 
 
+/* SDI = RX    SDO TX*/
 
+
+#define UART_BUFFER_SIZE 256
+#define SETUP_BUF_LENGTH 20
+#define ANAL_BUF_LENGTH  15
+#define M_SEC FCY*0.01 //0.001
 
 #include <libpic30.h>
 #include <p30F4011.h>
@@ -19,6 +25,7 @@
 
 #include "Main.h"
 #include "Configs.h"
+#include "Wireless.h"
 
 
 // Configuration settings
@@ -33,8 +40,30 @@ int a=0;
 double tension, current, temperature, angle;
 double data[4];
 
+volatile unsigned int UART_write = 0;
+volatile unsigned int UART_read = 0;
+volatile unsigned char UARTbuffer[UART_BUFFER_SIZE];
+
 
 void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void);
+
+void __attribute__((interrupt, auto_psv)) _U1RXInterrupt(void);
+
+
+void UART1_send(char *UARTdata, int n){
+
+    int i=0;
+
+    while(i<n){
+
+        while(U1STAbits.UTXBF == 1); /* hold while buffer is full */
+        U1TXREG = UARTdata[i];
+        i++;
+
+    }
+}
+
+
 
 
 int Read_ADC (int analogic)
@@ -51,69 +80,84 @@ int Read_ADC (int analogic)
 
 void Convert()
 {
-    float R = 0;
-	float Vo;
-	float Vin = 5.00;
-	float Ro = 10000;
-	float To = 298.15;
-	float B = 3435;
-	float T;
+    float R;
+    float Vo;
+    float T;
+    float Ts;
     
    
-    //angle
+    //Angle
     angle = ((((305*PI)/180)/1024) * data[3]); // 305 graus
   
-	//temperature
-	Vo = Vin*(((float)data[2])/1024);
-	R =  Ro/((Vin - Vo)/(Vo));
-	T = (B*To)/(To*log(R/Ro)+B);
+    //Current
+    Vo = 5.00*((data[2])/1024);
+    R =  10000.00/((5.00 - Vo)/(Vo));
+    T = (3435.00*298.15)/(298.15*log(R/10000.00)+3435.00);
+ 
+    temperature = (T - 273.15);
     
-    temperature = (T - 273.15); 
+ 
+    
+    //current
+    
+    
+    
+    
+   
+  // Tension  
+    Ts = 5.00*((data[0])/1024);
+    tension = (38.00/5.00)*Ts;
+   
 }
 
 
 // tensão, corrente, temperatura, angulo
 int main (void)
 {  
-    char dados[30];
+    char dados[50];
     
-    init_uart();
-    init_Timer2(2,2000); //prescale, count
+    init_UART1();
+    init_UART2();
+  //  init_Timer2(2,2000);
     init_Timer3(3,58594);
     init_ADC();   
-    
-    PWM_Config(1000);
-   
+       
     ADC_Analogic(0);
     ADC_Analogic(1);
     ADC_Analogic(2);
-    ADC_Analogic(3);
+    ADC_Analogic(3);   
     
-    
+//    
+//    
+//    
     while(1)        
-    {
- 
-    
+    {  
         if (a==1)
       {
           
-       
+  
+            
+    
+       // UART1_send("AT\r\n",strlen("AT\r\n"));
+        
         data[0]=Read_ADC(0);         
         data[1]=Read_ADC(1);
         data[2]=Read_ADC(2);         
         data[3]=Read_ADC(3);
-        Convert(data[0],data[1],data[2],data[3]);
+        Convert();
         
         
-        sprintf(dados," %f, %f, %f, %f", tension, current, temperature, angle);
-        printf("\n\r%d -> angulo= %f",data[3],angle);
-        printf("\n\r%s",dados);
-      
+      sprintf(dados,"%f, %f, %f, %f", tension, current, temperature, angle);
+    
+      printf("\r\n %.0f %.0f %.0f %.0f", data[3],data[2],data[1],data[0]);
+      printf("\n\r%s",dados);
+//      
         
        a=0;
     
          }       
     }
+       
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void) {
@@ -122,3 +166,22 @@ void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void) {
     IFS0bits.T3IF = 0; //Clears interrupt flag 
     return;
     }
+
+/**********************************************************************
+
+ * Assign UART1 interruption
+
+ **********************************************************************/
+
+void __attribute__((interrupt, auto_psv)) _U1RXInterrupt(void){
+
+    
+
+    UARTbuffer[UART_write] = U1RXREG;
+    UART_write = (UART_write+1)%UART_BUFFER_SIZE; 
+
+    IFS0bits.U1RXIF = 0;        /* clear the Rx Interrupt Flag */
+
+    return;
+
+}
