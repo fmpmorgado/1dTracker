@@ -30,7 +30,7 @@
 
 // Configuration settings
 #pragma config FCKSMEN=CSW_FSCM_OFF
-#pragma config FOS=PRI               //fonte È o cristal
+#pragma config FOS=PRI               //fonte √© o cristal
 #pragma config FPR=XT_PLL16          //oscilador a 16x cristal
 #pragma config WDT=WDT_OFF           //watchdog timer off
 #pragma config MCLRE=MCLR_EN         //turn MCLR pin ON and
@@ -58,6 +58,7 @@ void UART1_send(char *UARTdata, int n){
 
         while(U1STAbits.UTXBF == 1); /* hold while buffer is full */
         U1TXREG = UARTdata[i];
+        printf("%c",U1TXREG);
         i++;
 
     }
@@ -81,18 +82,18 @@ int Read_ADC (int analogic)
 void Convert()
 {
     float R;
-    float Vo;
-    float T;
+	float Vo;
+	float T;
     float Ts;
     
    
     //Angle
     angle = ((((305*PI)/180)/1024) * data[3]); // 305 graus
   
-    //Current
-    Vo = 5.00*((data[2])/1024);
-    R =  10000.00/((5.00 - Vo)/(Vo));
-    T = (3435.00*298.15)/(298.15*log(R/10000.00)+3435.00);
+	//Temperature
+	Vo = 5.00*((data[2])/1024);
+	R =  10000.00/((5.00 - Vo)/(Vo));
+	T = (3435.00*298.15)/(298.15*log(R/10000.00)+3435.00);
  
     temperature = (T - 273.15);
     
@@ -106,20 +107,21 @@ void Convert()
    
   // Tension  
     Ts = 5.00*((data[0])/1024);
-    tension = (38.00/5.00)*Ts;
+    tension = (38/5.00)*Ts;
    
 }
 
 
-// tens„o, corrente, temperatura, angulo
+// tens√£o, corrente, temperatura, angulo
 int main (void)
 {  
     char dados[50];
     
     init_UART1();
-    init_UART2();
+    //init_UART2();
   //  init_Timer2(2,2000);
     init_Timer3(3,58594);
+  //  init_Timer3(2,2000);
     init_ADC();   
        
     ADC_Analogic(0);
@@ -133,26 +135,29 @@ int main (void)
     while(1)        
     {  
         if (a==1)
-      {
-          
-  
+      {   
             
-    
-       // UART1_send("AT\r\n",strlen("AT\r\n"));
+      // UART1_send("batata",strlen("batata"));
         
         data[0]=Read_ADC(0);         
         data[1]=Read_ADC(1);
         data[2]=Read_ADC(2);         
         data[3]=Read_ADC(3);
+
         Convert();
         
-        
-      sprintf(dados,"%f, %f, %f, %f", tension, current, temperature, angle);
-    
-      printf("\r\n %.0f %.0f %.0f %.0f", data[3],data[2],data[1],data[0]);
-      printf("\n\r%s",dados);
-//      
-        
+//        
+        printf(",%f, %f, %f, %f, \n", tension, current, temperature, angle);
+      //    printf("%.0f %.0f %.0f %.0f \n", data[3],data[2],data[1],data[0]);
+//
+   //    printf("\n\r%s",dados);
+    //     sprintf(dados,"Hello\n");
+      //  printf("- %s", dados);
+
+ //      printf("\r");
+
+   
+        // https://raw.githubusercontent.com/tbird20d/grabserial/master/grabserial
        a=0;
     
          }       
@@ -162,6 +167,7 @@ int main (void)
 
 void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void) {
 
+  
     a=1;
     IFS0bits.T3IF = 0; //Clears interrupt flag 
     return;
