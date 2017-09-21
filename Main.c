@@ -25,7 +25,7 @@
 
 #include "Main.h"
 #include "Configs.h"
-#include "Wireless.h"
+
 
 
 // Configuration settings
@@ -50,19 +50,19 @@ void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void);
 void __attribute__((interrupt, auto_psv)) _U1RXInterrupt(void);
 
 
-void UART1_send(char *UARTdata, int n){
-
-    int i=0;
-
-    while(i<n){
-
-        while(U1STAbits.UTXBF == 1); /* hold while buffer is full */
-        U1TXREG = UARTdata[i];
-        printf("%c",U1TXREG);
-        i++;
-
-    }
-}
+//void UART1_send(char *UARTdata, int n){
+//
+//    int i=0;
+//
+//    while(i<n){
+//
+//        while(U1STAbits.UTXBF == 1); /* hold while buffer is full */
+//        U1TXREG = UARTdata[i];
+//        printf("%c",U1TXREG);
+//        i++;
+//
+//    }
+//}
 
 
 
@@ -88,46 +88,43 @@ void Convert()
     
    
     //Angle
-    angle = ((((305*PI)/180)/1024) * data[3]); // 305 graus
+    angle = ((((305*PI)/180)/1024) * data[2]); // 305 graus
   
 	//Temperature
-	Vo = 5.00*((data[2])/1024);
+	Vo = 5.00*((data[1])/1024);
 	R =  10000.00/((5.00 - Vo)/(Vo));
 	T = (3435.00*298.15)/(298.15*log(R/10000.00)+3435.00);
  
-    temperature = (T - 273.15);
+    temperature = (T - 273.15);  
     
+    // Voltage
+	
+	// Caso Tensão máxima seja 38V
+    //Ts = 5.00*((data[0])/1024);
+    //tension = (38/5.00)*Ts;
+	
+	//Caso Corrente máxima seja os 0.86A, passando numa resistência de 10 Ohm
+	Ts = 5.00*((data[0])/1024);
+	tension = (8.6/5.00)*Ts;
+
+
  
-    
-    //current
-    
-    
-    
-    
-   
-  // Tension  
-    Ts = 5.00*((data[0])/1024);
-    tension = (38/5.00)*Ts;
-   
+    //Current
+    current=tension/10.0;
 }
 
 
 // tensão, corrente, temperatura, angulo
 int main (void)
-{  
-    char dados[50];
-    
+{     
     init_UART1();
-    //init_UART2();
-  //  init_Timer2(2,2000);
     init_Timer3(3,58594);
-  //  init_Timer3(2,2000);
     init_ADC();   
        
     ADC_Analogic(0);
     ADC_Analogic(1);
     ADC_Analogic(2);
-    ADC_Analogic(3);   
+ 
     
 //    
 //    
@@ -137,27 +134,17 @@ int main (void)
         if (a==1)
       {   
             
-      // UART1_send("batata",strlen("batata"));
+      // UART1_send("TESTE",strlen("TESTE));
         
         data[0]=Read_ADC(0);         
         data[1]=Read_ADC(1);
         data[2]=Read_ADC(2);         
-        data[3]=Read_ADC(3);
+
 
         Convert();
-        
-//        
-        printf(",%f, %f, %f, %f, \n", tension, current, temperature, angle);
-      //    printf("%.0f %.0f %.0f %.0f \n", data[3],data[2],data[1],data[0]);
-//
-   //    printf("\n\r%s",dados);
-    //     sprintf(dados,"Hello\n");
-      //  printf("- %s", dados);
+            
+       printf(",%f, %f, %f, %f, \n", tension, current, temperature, angle);
 
- //      printf("\r");
-
-   
-        // https://raw.githubusercontent.com/tbird20d/grabserial/master/grabserial
        a=0;
     
          }       
